@@ -109,6 +109,7 @@ export default class Registrar {
   async getAddress(name) {
     const provider = await getProvider()
     const hash = namehash(name)
+    console.log(`getAddress - name : ${name}, hash : ${hash}`)
     const resolverAddr = await this.ENS.resolver(hash)
     const Resolver = getResolverContract({ address: resolverAddr, provider })
     return Resolver['addr(bytes32)'](hash)
@@ -117,17 +118,20 @@ export default class Registrar {
   async getText(name, key) {
     const provider = await getProvider()
     const hash = namehash(name)
+    console.log(`getText - name : ${name}, hash : ${hash}`)
     const resolverAddr = await this.ENS.resolver(hash)
     const Resolver = getResolverContract({ address: resolverAddr, provider })
     return Resolver.text(hash, key)
   }
 
   async getDeed(address) {
+    console.log(`getDeed - address : ${address}`)
     const provider = await getProvider()
     return getDeedContract({ address, provider })
   }
 
   async getOracle(address) {
+    console.log(`getOracle - address : ${address}`)
     const provider = await getProvider()
     return getOracleContract({ address, provider })
   }
@@ -201,6 +205,7 @@ export default class Registrar {
       // Returns registrar address if owned by new registrar.
       // Keep it as a separate call as this will throw exception for non existing domains
       ret.ownerOf = await Registrar.ownerOf(labelHash)
+      ret.deedOwner = ret.ownerOf
     } catch (e) {
       return false
     } finally {
@@ -211,7 +216,7 @@ export default class Registrar {
   async getEntry(label) {
     let [block, legacyEntry, permEntry] = await Promise.all([
       getBlock(),
-      this.getLegacyEntry(label),
+      // this.getLegacyEntry(label),
       this.getPermanentEntry(label)
     ])
 
@@ -330,7 +335,7 @@ export default class Registrar {
   }
 
   async getEthPrice() {
-    const oracleens = 'eth-usd.data.eth'
+    const oracleens = 'eth-usd.eth'
     try{
       const contractAddress = await this.getAddress(oracleens)
       const oracle = await this.getOracle(contractAddress)
@@ -341,12 +346,7 @@ export default class Registrar {
   }
 
   async getPriceCurve() {
-    try {
-      return this.getText('eth', 'oracle')
-    } catch (e) {
-      // If the record is not set, fallback to linear.
       return 'linear'
-    }
   }
 
   async getRentPrices(labels, duration) {
@@ -422,6 +422,7 @@ export default class Registrar {
     const price = await this.getRentPrice(label, duration)
     const priceWithBuffer = getBufferedPrice(price)
     const resolverAddr = await this.getAddress('resolver.eth')
+    console.log("register", "resolverAddr", 'resolver.eth', resolverAddr)
     if (parseInt(resolverAddr, 16) === 0) {
       const gasLimit = await this.estimateGasLimit(() => {
         return permanentRegistrarController.estimateGas.register(
@@ -522,12 +523,12 @@ export default class Registrar {
   }
 
   async releaseDeed(label) {
-    const legacyAuctionRegistrar = this.legacyAuctionRegistrar
-    const signer = await getSigner()
-    const legacyAuctionRegistrarWithSigner =
-      legacyAuctionRegistrar.connect(signer)
-    const hash = labelhash(label)
-    return legacyAuctionRegistrarWithSigner.releaseDeed(hash)
+    // const legacyAuctionRegistrar = this.legacyAuctionRegistrar
+    // const signer = await getSigner()
+    // const legacyAuctionRegistrarWithSigner =
+    //   legacyAuctionRegistrar.connect(signer)
+    // const hash = labelhash(label)
+    // return legacyAuctionRegistrarWithSigner.releaseDeed(hash)
   }
 
   async isDNSRegistrar(parentOwner) {

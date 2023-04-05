@@ -1,6 +1,6 @@
 import { formatsByName, formatsByCoinType } from '@ensdomains/address-encoder'
 import { abi as ensContract } from '@ensdomains/contracts/abis/ens/ENS.json'
-import { utils, BigNumber } from 'ethers'
+import { utils, BigNumber } from 'boa-ethers'
 import {
   getENSContract,
   getResolverContract,
@@ -51,6 +51,15 @@ const contracts = {
   },
   5: {
     registry: '0x00000000000C2E074eC69A0dFb2997BA6C7d2e1e'
+  },
+  2019: {
+    registry: '0x8ec078ecC2779959136eE870475c02204B7eA93d'
+  },
+  2151: {
+    registry: '0x8ec078ecC2779959136eE870475c02204B7eA93d'
+  },
+  34559: {
+    registry: '0x8ec078ecC2779959136eE870475c02204B7eA93d'
   }
 }
 
@@ -82,38 +91,45 @@ export class ENS {
 
   // TODO: ethers.js does not support owner
   async getOwner(name) {
+    console.log("getOwner", name)
     const namehash = getNamehash(name)
     const owner = await this.ENS.owner(namehash)
     return owner
   }
 
   async getResolver(name) {
+    console.log("getResolver", name)
     const provider = await getProvider()
     let resolver = await provider.getResolver(name)
-    if(resolver){
+    if (resolver) {
+      console.log("getResolver", name, resolver.address)
       return resolver.address
     }
   }
 
   async _getResolverObject(name) {
+    console.log("_getResolverObject", name)
     const provider = await getProvider()
-    return provider.getResolver(name)
+    return await provider.getResolver(name)
   }
 
   // TODO: ethers.js does not support ttl
   async getTTL(name) {
+    console.log("getTTL", name)
     const namehash = getNamehash(name)
     return this.ENS.ttl(namehash)
   }
 
   // TODO: ethers.js does not support lookup by namehash
   async getResolverWithLabelhash(labelhash, nodehash) {
+    console.log("getResolverWithLabelhash", labelhash, nodeHash)
     const namehash = await getNamehashWithLabelHash(labelhash, nodehash)
     return this.ENS.resolver(namehash)
   }
 
   // TODO: ethers.js does not support lookup by namehash
   async getOwnerWithLabelHash(labelhash, nodeHash) {
+    console.log("getOwnerWithLabelHash", labelhash, nodeHash)
     const namehash = await getNamehashWithLabelHash(labelhash, nodeHash)
     return this.ENS.owner(namehash)
   }
@@ -124,14 +140,19 @@ export class ENS {
 
   async getAddr(name, key) {
     if(!name) return emptyAddress
+    console.log("getAddr", name, key)
     const resolver = await this._getResolverObject(name)
-    if(!resolver) return emptyAddress
+    if(!resolver) {
+      console.log("getAddr", "resolver is null")
+      return emptyAddress
+    }
     try {
       const { coinType, encoder } = formatsByName[key]
       const encodedCoinType = utils.hexZeroPad(BigNumber.from(coinType).toHexString(), 32)
       const data = await resolver._fetchBytes('0xf1cb7e06', encodedCoinType)
       if([emptyAddress, '0x', null].includes(data) ) return emptyAddress
       let buffer = Buffer.from(data.slice(2), "hex")
+      console.log("getAddr", name, key, encoder(buffer))
       return encoder(buffer);
     } catch (e) {
       console.log(e)
@@ -143,6 +164,7 @@ export class ENS {
   }
 
   async getContent(name) {
+    console.log("getContent", name)
     const resolver = await this._getResolverObject(name)
     if (!resolver) {
       return emptyAddress
@@ -192,10 +214,15 @@ export class ENS {
   }
 
   async getText(name, key) {
+    console.log("getText", name, key)
     const resolver = await this._getResolverObject(name)
-    if(!resolver) return ''
+    if(!resolver) {
+      console.log("getText", "resolver is null")
+      return ''
+    }
     try {
       const addr = await resolver.getText(key)
+      console.log("getText", name, key, addr)
       return addr
     } catch (e) {
       console.warn(
@@ -206,19 +233,23 @@ export class ENS {
   }
 
   async getName(address) {
+    console.log("getName", address)
     const provider = await getProvider()
     const name = await provider.lookupAddress(address)
+    console.log("getName", name)
     return {
       name
     }
   }
 
   async isMigrated(name) {
+    console.log("isMigrated", name)
     const namehash = getNamehash(name)
     return this.ENS.recordExists(namehash)
   }
 
   async getResolverDetails(node) {
+    console.log("getResolverDetails", node)
     try {
       const addrPromise = this.getAddress(node.name)
       const contentPromise = this.getContent(node.name)
@@ -241,6 +272,7 @@ export class ENS {
   }
 
   async getSubdomains(name) {
+    console.log("getSubdomains", name)
     const startBlock = await getEnsStartBlock()
     const namehash = getNamehash(name)
     const rawLogs = await this.getENSEvent('NewOwner', {
@@ -269,6 +301,7 @@ export class ENS {
   }
 
   async getDomainDetails(name) {
+    console.log("getDomainDetails", name)
     const nameArray = name.split('.')
     const labelhash = getLabelhash(nameArray[0])
     const [owner, resolver] = await Promise.all([
@@ -299,6 +332,7 @@ export class ENS {
   /* non-constant functions */
 
   async setOwner(name, newOwner) {
+    console.log("setOwner", name, newOwner)
     const ENSWithoutSigner = this.ENS
     const signer = await getSigner()
     const ENS = ENSWithoutSigner.connect(signer)
@@ -307,6 +341,7 @@ export class ENS {
   }
 
   async setSubnodeOwner(name, newOwner) {
+    console.log("setSubnodeOwner", name, newOwner)
     const ENSWithoutSigner = this.ENS
     const signer = await getSigner()
     const ENS = ENSWithoutSigner.connect(signer)
@@ -319,6 +354,7 @@ export class ENS {
   }
 
   async setSubnodeRecord(name, newOwner, resolver) {
+    console.log("setSubnodeRecord", name, newOwner, resolver)
     const ENSWithoutSigner = this.ENS
     const signer = await getSigner()
     const ENS = ENSWithoutSigner.connect(signer)
@@ -338,6 +374,7 @@ export class ENS {
   }
 
   async setResolver(name, resolver) {
+    console.log("setResolver", resolver)
     const namehash = getNamehash(name)
     const ENSWithoutSigner = this.ENS
     const signer = await getSigner()
@@ -346,11 +383,13 @@ export class ENS {
   }
 
   async setAddress(name, address) {
+    console.log("setAddress", name, address)
     const resolverAddr = await this.getResolver(name)
     return this.setAddressWithResolver(name, address, resolverAddr)
   }
 
   async setAddressWithResolver(name, address, resolverAddr) {
+    console.log("setAddressWithResolver", name, address, resolverAddr)
     const namehash = getNamehash(name)
     const provider = await getProvider()
     const ResolverWithoutSigner = getResolverContract({
@@ -363,11 +402,13 @@ export class ENS {
   }
 
   async setAddr(name, key, address) {
+    console.log("setAddr", name, address)
     const resolverAddr = await this.getResolver(name)
     return this.setAddrWithResolver(name, key, address, resolverAddr)
   }
 
   async setAddrWithResolver(name, key, address, resolverAddr) {
+    console.log("setAddrWithResolver", name, key, address, resolverAddr)
     const namehash = getNamehash(name)
     const provider = await getProvider()
     const ResolverWithoutSigner = getResolverContract({
@@ -391,11 +432,13 @@ export class ENS {
   }
 
   async setContent(name, content) {
+    console.log("setContent", name, content)
     const resolverAddr = await this.getResolver(name)
     return this.setContentWithResolver(name, content, resolverAddr)
   }
 
   async setContentWithResolver(name, content, resolverAddr) {
+    console.log("setContentWithResolver", name, content, resolverAddr)
     const namehash = getNamehash(name)
     const provider = await getProvider()
     const ResolverWithoutSigner = getResolverContract({
@@ -408,11 +451,13 @@ export class ENS {
   }
 
   async setContenthash(name, content) {
+    console.log("setContenthash", name, content)
     const resolverAddr = await this.getResolver(name)
     return this.setContenthashWithResolver(name, content, resolverAddr)
   }
 
   async setContenthashWithResolver(name, content, resolverAddr) {
+    console.log("setContenthashWithResolver", name, content, resolverAddr)
     let encodedContenthash = content
     if (parseInt(content, 16) !== 0) {
       encodedContenthash = encodeContenthash(content)
@@ -430,11 +475,13 @@ export class ENS {
   }
 
   async setText(name, key, recordValue) {
+    console.log("name", name, key, recordValue)
     const resolverAddr = await this.getResolver(name)
     return this.setTextWithResolver(name, key, recordValue, resolverAddr)
   }
 
   async setTextWithResolver(name, key, recordValue, resolverAddr) {
+    console.log("setTextWithResolver", name, key, recordValue, resolverAddr)
     const namehash = getNamehash(name)
     const provider = await getProvider()
     const ResolverWithoutSigner = getResolverContract({
@@ -447,6 +494,7 @@ export class ENS {
   }
 
   async createSubdomain(name) {
+    console.log("createSubdomain", name)
     const account = await getAccount()
     const publicResolverAddress = await this.getAddress('resolver.eth')
     try {
@@ -466,12 +514,15 @@ export class ENS {
 
   async claimAndSetReverseRecordName(name, overrides = {}) {
     const reverseRegistrarAddr = await this.getOwner('addr.reverse')
+    console.log("claimAndSetReverseRecordName", "name", name)
+    console.log("claimAndSetReverseRecordName", "owner", 'addr.reverse', reverseRegistrarAddr)
     const provider = await getProvider()
     const reverseRegistrarWithoutSigner = getReverseRegistrarContract({
       address: reverseRegistrarAddr,
       provider
     })
     const signer = await getSigner()
+    console.log("claimAndSetReverseRecordName", "signer.address", signer.address)
     const reverseRegistrar = reverseRegistrarWithoutSigner.connect(signer)
     const networkId = await getNetworkId()
 

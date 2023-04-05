@@ -1,4 +1,4 @@
-import { Contract } from 'ethers'
+import { Contract } from 'boa-ethers'
 import {
   BaseRegistrarImplementation as permanentRegistrarContract,
   BulkRenewal as bulkRenewalContract,
